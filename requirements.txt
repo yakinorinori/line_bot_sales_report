@@ -16,5 +16,5 @@ PyQtNetworkAuth==5.15.5
 PyQtPurchasing==5.15.5
 PyQtWebEngine==5.15.6
 setuptools==69.0.2
-TBB==0.2
+TBB==2022.0.0
 wheel==0.43.0
