@@ -23,3 +23,4 @@ line-bot-sdk
 msal
 openpyxl
 requests
+gunicorn
