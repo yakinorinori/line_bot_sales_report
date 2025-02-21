@@ -3,7 +3,7 @@ import requests
 import openpyxl
 import os
 from msal import ConfidentialClientApplication
-from linebot import LineBotApi, WebhookHandler
+from linebot.v3 import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import datetime
