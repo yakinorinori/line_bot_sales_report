@@ -3,7 +3,7 @@ import requests
 import openpyxl
 import os
 from msal import ConfidentialClientApplication
-from linebot import LineBotApi, WebhookHandler
+from linebot.v3 import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import datetime
@@ -11,15 +11,15 @@ import datetime
 app = Flask(__name__)
 
 # LINE Botの設定
-LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')  # 環境変数から取得
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')  # 環境変数から取得
+LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET') 
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')  
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # Azureの設定
-CLIENT_ID = os.getenv('CLIENT_ID')  # 環境変数から取得
-CLIENT_SECRET = os.getenv('CLIENT_SECRET')  # 環境変数から取得
-TENANT_ID = os.getenv('TENANT_ID')  # 環境変数から取得
+CLIENT_ID = os.getenv('CLIENT_ID') 
+CLIENT_SECRET = os.getenv('CLIENT_SECRET') 
+TENANT_ID = os.getenv('TENANT_ID')
 GRAPH_SCOPE = ['https://graph.microsoft.com/Files.ReadWrite.All']
 
 # Excelファイル名
