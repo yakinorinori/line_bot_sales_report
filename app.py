@@ -60,7 +60,6 @@ def upload_file_to_onedrive():
         upload_url = f'https://graph.microsoft.com/v1.0/me/drive/root:/{EXCEL_FILE_NAME}:/content'
         response = requests.put(upload_url, headers=headers, data=file)
         return response.status_code == 201  # 成功した場合はTrueを返す
-
 # Webhookエンドポイント
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -72,7 +71,8 @@ def callback():
     except InvalidSignatureError:
         abort(400)
 
-    return 'OK'
+    # ステータスコード200を明示的に返す
+    return ('OK', 200)
 
 # メッセージを処理する
 @handler.add(MessageEvent, message=TextMessage)
