@@ -3,7 +3,8 @@ import requests
 import openpyxl
 import os
 from msal import ConfidentialClientApplication
-from linebot.v3 import LineBotApi, WebhookHandler
+from linebot import LineBotApi
+from linebot import WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 import datetime
@@ -109,5 +110,5 @@ def favicon():
     return '', 204  # No Content
 
 if __name__ == "__main__":
-    # app.run(host='0.0.0.0', port=8000)  # Renderでは特にポートを指定する必要はありません
-    pass  # 実際の処理がなくてもパスを置くことができます
+    port = int(os.environ.get("PORT", 5000))  # デフォルトは5000
+    app.run(host='0.0.0.0', port=port)
