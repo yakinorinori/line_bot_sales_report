@@ -1,4 +1,4 @@
-gpg==1.23.2
+gpg
 numpy==1.26.4
 openvino==2024.1.0
 PyQt3D==5.15.6
