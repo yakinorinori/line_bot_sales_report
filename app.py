@@ -33,6 +33,13 @@ service = build('sheets', 'v4', credentials=credentials)
 # ユーザーの状態を管理するための辞書
 user_data = {}
 
+# 全角数字を半角に変換する関数
+def to_half_width_digit(text):
+    return text.translate(str.maketrans({
+        '０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
+        '５': '5', '６': '6', '７': '7', '８': '8', '９': '9'
+    }))
+
 # Google Sheetsに売上データを追加する関数
 def add_sales_data_to_google_sheets(date, payer, customer_count, sales):
     sheet = service.spreadsheets()
@@ -66,7 +73,7 @@ def callback():
 def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
-    
+
     if user_id not in user_data:
         user_data[user_id] = {'step': 0, 'sales_info': []}
 
@@ -92,8 +99,11 @@ def handle_message(event):
         user_data[user_id]['step'] = 2
     
     elif user_data[user_id]['step'] == 2:
+        # 全角数字を半角に変換
+        converted_message = to_half_width_digit(user_message)
+
         try:
-            receipt_count = int(user_message)
+            receipt_count = int(converted_message)
             user_data[user_id]['sales_info'][0]['receipt_count'] = receipt_count
             user_data[user_id]['sales_info'][0]['transactions'] = []
             line_bot_api.reply_message(
@@ -117,8 +127,11 @@ def handle_message(event):
         user_data[user_id]['step'] = 4
     
     elif user_data[user_id]['step'] == 4:
+        # 全角数字を半角に変換
+        converted_message = to_half_width_digit(user_message)
+
         try:
-            customer_count = int(user_message)
+            customer_count = int(converted_message)
             user_data[user_id]['sales_info'][0]['transactions'][-1]['customer_count'] = customer_count
             line_bot_api.reply_message(
                 event.reply_token,
