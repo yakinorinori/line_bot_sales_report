@@ -18,9 +18,10 @@ PyQtWebEngine==5.15.6
 setuptools==69.0.2
 TBB==2022.0.0
 wheel==0.43.0
-flask
+Flask
 line-bot-sdk
-msal
+google-auth
+google-api-python-client
 openpyxl
 requests
 gunicorn
