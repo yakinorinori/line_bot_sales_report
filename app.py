@@ -129,6 +129,8 @@ def handle_message(event):
     
     elif current_step == 3:
         current_receipt_index = user_data[user_id].get('current_receipt', 0)
+        
+        # 支払い者の名前を取得
         payer = user_message
         
         # 伝票に支払い者の名前を追加
@@ -180,20 +182,25 @@ def handle_message(event):
             user_data[user_id]['step'] = 3
         else:
             # すべての伝票情報をGoogle Sheetsに追加
-            for transaction in user_data[user_id]['sales_info'][0]['transactions']:
-                add_sales_data_to_google_sheets(
-                    user_data[user_id]['sales_info'][0]['date'],
-                    transaction['payer'],
-                    transaction['customer_count'],
-                    transaction['sales']
+            try:
+                for transaction in user_data[user_id]['sales_info'][0]['transactions']:
+                    add_sales_data_to_google_sheets(
+                        user_data[user_id]['sales_info'][0]['date'],
+                        transaction['payer'],
+                        transaction['customer_count'],
+                        transaction['sales']
+                    )
+                total_sales = sum(int(transaction['sales']) for transaction in user_data[user_id]['sales_info'][0]['transactions'])
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=f"本日の売上は {total_sales} 円でした。\n報告を終了するには「終了」、新しい伝票を追加するには「新規」と入力してください。")
                 )
-
-            total_sales = sum(int(transaction['sales']) for transaction in user_data[user_id]['sales_info'][0]['transactions'])
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text=f"本日の売上は {total_sales} 円でした。\n報告を終了するには「終了」、新しい伝票を追加するには「新規」と入力してください。")
-            )
-            user_data[user_id]['step'] = 0
+                user_data[user_id]['step'] = 0
+            except Exception as e:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="データの登録中にエラーが発生しました。再試行してください。")
+                )
 
     elif user_message == "終了":
         line_bot_api.reply_message(
