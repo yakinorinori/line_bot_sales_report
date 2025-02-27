@@ -124,7 +124,7 @@ def handle_message(event):
         except ValueError:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="伝票の枚数は数字で入力してください。")
+                TextSendMessage(text="伝票の枚数は数字で入力してください。数字以外の値は無効です。")
             )
     
     elif current_step == 3:
@@ -166,7 +166,7 @@ def handle_message(event):
         except ValueError:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="伝票の人数は数字で入力してください。")
+                TextSendMessage(text="伝票の人数は数字で入力してください。有効な数字を入力してください。")
             )
 
     elif current_step == 5:
@@ -219,7 +219,7 @@ def handle_message(event):
     else:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="入力が不明です。次のステップを明示してください。")
+            TextSendMessage(text="入力が不明です。正しい指示を入力してください。")
         )
 
 @app.route('/', methods=['GET'])
