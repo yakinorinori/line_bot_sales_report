@@ -23,7 +23,7 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 
 # 認証情報のファイルパス
-CREDENTIALS_PATH = '/etc/secrets/credentials.json'
+CREDENTIALS_PATH = '/etc/secrets/credentials'
 
 # 認証情報をファイルから読み込む
 with open(CREDENTIALS_PATH) as f:
