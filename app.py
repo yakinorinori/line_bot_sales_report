@@ -16,12 +16,14 @@ line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # Google APIの設定
-CREDENTIALS_PATH = os.getenv('CREDENTIALS_PATH', '/etc/secrets/credentials.json')
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 
-# 認証情報を読み込み
+# 認証情報のファイルパス
+CREDENTIALS_PATH = '/etc/secrets/credentials'
+
+# 認証情報をファイルから読み込む
 with open(CREDENTIALS_PATH) as f:
-    credentials_info = json.load(f)
+    credentials_info = json.load(f)  # JSON形式で読み込む
 
 credentials = Credentials.from_service_account_info(credentials_info)
 service = build('sheets', 'v4', credentials=credentials)
