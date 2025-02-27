@@ -81,6 +81,7 @@ def handle_message(event):
         user_data[user_id] = {'step': 0, 'sales_info': []}
 
     current_step = user_data[user_id]['step']
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"現在のステップ: {current_step}"))
 
     # 初期状態：売り上げ報告を待機
     if current_step == 0:
@@ -90,6 +91,7 @@ def handle_message(event):
                 TextSendMessage(text="営業日を入力してください（例: 2025/01/01）")
             )
             user_data[user_id]['step'] = 1
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを1に進めました。"))
         else:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -104,6 +106,7 @@ def handle_message(event):
             TextSendMessage(text="伝票の枚数を入力してください。")
         )
         user_data[user_id]['step'] = 2
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを2に進めました。"))
     
     # 伝票の枚数を処理
     elif current_step == 2:
@@ -119,6 +122,7 @@ def handle_message(event):
                 TextSendMessage(text="支払い者の名前を入力してください。")
             )
             user_data[user_id]['step'] = 3
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを3に進めました。"))
         except ValueError:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -140,6 +144,7 @@ def handle_message(event):
                 TextSendMessage(text=f"{current_receipt_index + 1}枚目の伝票の人数を入力してください。")
             )
             user_data[user_id]['step'] = 4
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを4に進めました。"))
         else:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -161,6 +166,7 @@ def handle_message(event):
                 TextSendMessage(text=f"伝票{current_receipt_index + 1}の売上を入力してください。")
             )
             user_data[user_id]['step'] = 5
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを5に進めました。"))
         except ValueError:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -179,6 +185,7 @@ def handle_message(event):
                 TextSendMessage(text=f"伝票{current_receipt_index + 1}の支払い者の名前を入力してください。")
             )
             user_data[user_id]['step'] = 3
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを3に進めました。"))
         else:
             try:
                 for transaction in user_data[user_id]['sales_info'][0]['transactions']:
