@@ -6,6 +6,10 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+import logging
+
+# ロギングの設定
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
@@ -19,12 +23,13 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 
 # 認証情報のファイルパス
-CREDENTIALS_PATH = '/etc/secrets/credentials'
+CREDENTIALS_PATH = '/etc/secrets/credentials.json'
 
 # 認証情報をファイルから読み込む
 with open(CREDENTIALS_PATH) as f:
     credentials_info = json.load(f)  # JSON形式で読み込む
 
+# Credentialsオブジェクトを生成
 credentials = Credentials.from_service_account_info(credentials_info)
 service = build('sheets', 'v4', credentials=credentials)
 
@@ -54,7 +59,7 @@ def add_sales_data_to_google_sheets(date, payer, customer_count, sales):
         response = request.execute()
         return response
     except Exception as e:
-        print(f"Error appending to Google Sheets: {e}")
+        logging.error(f"Error appending to Google Sheets: {e}")
         return None
 
 # Webhookエンドポイント
@@ -82,9 +87,13 @@ def handle_message(event):
 
     session = user_sessions[user_id]
 
+    # ログ出力
+    logging.info(f"User ID: {user_id}, Step: {session['step']}, User Message: {user_message}")
+
     # コマンドの処理
     if user_message.lower() == "リセット":
         user_sessions[user_id] = {"step": STEP_INIT, "data": {}}
+        logging.info(f"User ID: {user_id} - Session reset.")
         line_bot_api.reply_message(
             event.reply_token, TextSendMessage(text="入力をリセットしました。")
         )
@@ -102,7 +111,6 @@ def handle_message(event):
             )
 
     elif session["step"] == STEP_DATE:
-        # 日付の入力を受け付ける
         session["data"]["date"] = user_message
         session["step"] = STEP_RECEIPT_COUNT
         line_bot_api.reply_message(
