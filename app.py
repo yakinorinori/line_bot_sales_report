@@ -34,7 +34,6 @@ service = build('sheets', 'v4', credentials=credentials)
 # ユーザーの状態を管理するための辞書
 user_data = {}
 
-# 全角文字を半角に変換する関数
 def to_half_width(text):
     return text.translate(str.maketrans({
         '０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
@@ -43,12 +42,10 @@ def to_half_width(text):
         '。': '.', '、': ','
     }))
 
-# クリーンな入力を得るための関数
 def clean_input(user_input):
     half_width = to_half_width(user_input)
     return re.sub(r'[^0-9/-]', '', half_width)
 
-# Google Sheetsに売上データを追加する関数
 def add_sales_data_to_google_sheets(date, payer, customer_count, sales):
     sheet = service.spreadsheets()
     new_row = [[date, payer, customer_count, sales]]
@@ -63,7 +60,6 @@ def add_sales_data_to_google_sheets(date, payer, customer_count, sales):
     response = request.execute()
     return response
 
-# Webhookエンドポイント
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -76,7 +72,6 @@ def callback():
 
     return ('OK', 200)
 
-# メッセージを処理する
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_id = event.source.user_id
@@ -87,6 +82,7 @@ def handle_message(event):
 
     current_step = user_data[user_id]['step']
 
+    # 初期状態：売り上げ報告を待機
     if current_step == 0:
         if user_message == "売り上げ報告":
             line_bot_api.reply_message(
@@ -100,6 +96,7 @@ def handle_message(event):
                 TextSendMessage(text="「売り上げ報告」と入力してください。")
             )
     
+    # 営業日を処理
     elif current_step == 1:
         user_data[user_id]['sales_info'].append({'date': user_message})
         line_bot_api.reply_message(
@@ -108,6 +105,7 @@ def handle_message(event):
         )
         user_data[user_id]['step'] = 2
     
+    # 伝票の枚数を処理
     elif current_step == 2:
         cleaned_message = clean_input(user_message)
 
@@ -115,7 +113,7 @@ def handle_message(event):
             receipt_count = int(cleaned_message)
             user_data[user_id]['sales_info'][0]['receipt_count'] = receipt_count
             user_data[user_id]['sales_info'][0]['transactions'] = []
-            user_data[user_id]['current_receipt'] = 0  # 現在の伝票のインデックスを初期化
+            user_data[user_id]['current_receipt'] = 0  
             line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(text="支払い者の名前を入力してください。")
@@ -124,23 +122,22 @@ def handle_message(event):
         except ValueError:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="伝票の枚数は数字で入力してください。数字以外の値は無効です。")
+                TextSendMessage(text="伝票の枚数は数字で入力してください。")
             )
     
+    # 支払い者の名前を処理
     elif current_step == 3:
-        current_receipt_index = user_data[user_id].get('current_receipt', 0)
-        
-        # 支払い者の名前を取得
+        current_receipt_index = user_data[user_id]['current_receipt']
         payer = user_message
-        
+
         # 伝票に支払い者の名前を追加
         user_data[user_id]['sales_info'][0]['transactions'].append({'payer': payer, 'customer_count': 0, 'sales': 0})
-        user_data[user_id]['current_receipt'] += 1  # 次の伝票に移動
+        user_data[user_id]['current_receipt'] += 1  
 
         if user_data[user_id]['current_receipt'] < user_data[user_id]['sales_info'][0]['receipt_count']:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text=f"{user_data[user_id]['current_receipt']}枚目の伝票の人数を入力してください。")
+                TextSendMessage(text=f"{current_receipt_index + 1}枚目の伝票の人数を入力してください。")
             )
             user_data[user_id]['step'] = 4
         else:
@@ -150,25 +147,27 @@ def handle_message(event):
             )
             user_data[user_id]['step'] = 0
 
+    # 伝票の人数を処理
     elif current_step == 4:
         cleaned_message = clean_input(user_message)
 
         try:
             customer_count = int(cleaned_message)
-            current_receipt_index = user_data[user_id]['current_receipt'] - 1  # 現在の伝票のインデックス
+            current_receipt_index = user_data[user_id]['current_receipt'] - 1 
             user_data[user_id]['sales_info'][0]['transactions'][current_receipt_index]['customer_count'] = customer_count
 
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text=f"伝票{user_data[user_id]['current_receipt']}の売上を入力してください。")
+                TextSendMessage(text=f"伝票{current_receipt_index + 1}の売上を入力してください。")
             )
             user_data[user_id]['step'] = 5
         except ValueError:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="伝票の人数は数字で入力してください。有効な数字を入力してください。")
+                TextSendMessage(text="伝票の人数は数字で入力してください。")
             )
 
+    # 売上を処理
     elif current_step == 5:
         sales = user_message
         current_receipt_index = user_data[user_id]['current_receipt'] - 1
@@ -177,11 +176,10 @@ def handle_message(event):
         if user_data[user_id]['current_receipt'] < user_data[user_id]['sales_info'][0]['receipt_count']:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text=f"伝票{user_data[user_id]['current_receipt']}の支払い者の名前を入力してください。")
+                TextSendMessage(text=f"伝票{current_receipt_index + 1}の支払い者の名前を入力してください。")
             )
             user_data[user_id]['step'] = 3
         else:
-            # すべての伝票情報をGoogle Sheetsに追加
             try:
                 for transaction in user_data[user_id]['sales_info'][0]['transactions']:
                     add_sales_data_to_google_sheets(
