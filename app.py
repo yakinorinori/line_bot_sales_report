@@ -4,7 +4,7 @@ import re
 from flask import Flask, request, abort
 from linebot import LineBotApi
 from linebot import WebhookHandler
-from linebot.exceptions import InvalidSignatureError
+from linebot.exceptions import InvalidSignatureError, LineBotApiError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -81,150 +81,170 @@ def handle_message(event):
         user_data[user_id] = {'step': 0, 'sales_info': []}
 
     current_step = user_data[user_id]['step']
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"現在のステップ: {current_step}"))
-
-    # 初期状態：売り上げ報告を待機
-    if current_step == 0:
-        if user_message == "売り上げ報告":
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="営業日を入力してください（例: 2025/01/01）")
-            )
-            user_data[user_id]['step'] = 1
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを1に進めました。"))
-        else:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="「売り上げ報告」と入力してください。")
-            )
     
-    # 営業日を処理
-    elif current_step == 1:
-        user_data[user_id]['sales_info'].append({'date': user_message})
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="伝票の枚数を入力してください。")
-        )
-        user_data[user_id]['step'] = 2
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを2に進めました。"))
+    # 初期状態のデバッグメッセージ
+    print(f"User ID: {user_id}, Current Step: {current_step}, User Message: {user_message}")
+
+    try:
+        # 初期状態：売り上げ報告を待機
+        if current_step == 0:
+            if user_message == "売り上げ報告":
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="営業日を入力してください（例: 2025/01/01）")
+                )
+                user_data[user_id]['step'] = 1
+                print(f"ステップを1に進めました。")
+
+            else:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="「売り上げ報告」と入力してください。")
+                )
+        
+        # 営業日を処理
+        elif current_step == 1:
+            user_data[user_id]['sales_info'].append({'date': user_message})
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="伝票の枚数を入力してください。")
+            )
+            user_data[user_id]['step'] = 2
+            print(f"ステップを2に進めました。")
+        
+        # 伝票の枚数を処理
+        elif current_step == 2:
+            cleaned_message = clean_input(user_message)
+
+            try:
+                receipt_count = int(cleaned_message)
+                user_data[user_id]['sales_info'][0]['receipt_count'] = receipt_count
+                user_data[user_id]['sales_info'][0]['transactions'] = []
+                user_data[user_id]['current_receipt'] = 0  
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="支払い者の名前を入力してください。")
+                )
+                user_data[user_id]['step'] = 3
+                print(f"ステップを3に進めました。")
+
+            except ValueError:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="伝票の枚数は数字で入力してください。")
+                )
     
-    # 伝票の枚数を処理
-    elif current_step == 2:
-        cleaned_message = clean_input(user_message)
+        # 支払い者の名前を処理
+        elif current_step == 3:
+            current_receipt_index = user_data[user_id]['current_receipt']
+            payer = user_message
 
-        try:
-            receipt_count = int(cleaned_message)
-            user_data[user_id]['sales_info'][0]['receipt_count'] = receipt_count
-            user_data[user_id]['sales_info'][0]['transactions'] = []
-            user_data[user_id]['current_receipt'] = 0  
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="支払い者の名前を入力してください。")
-            )
-            user_data[user_id]['step'] = 3
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを3に進めました。"))
-        except ValueError:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="伝票の枚数は数字で入力してください。")
-            )
-    
-    # 支払い者の名前を処理
-    elif current_step == 3:
-        current_receipt_index = user_data[user_id]['current_receipt']
-        payer = user_message
+            # 伝票に支払い者の名前を追加
+            user_data[user_id]['sales_info'][0]['transactions'].append({'payer': payer, 'customer_count': 0, 'sales': 0})
+            user_data[user_id]['current_receipt'] += 1  
 
-        # 伝票に支払い者の名前を追加
-        user_data[user_id]['sales_info'][0]['transactions'].append({'payer': payer, 'customer_count': 0, 'sales': 0})
-        user_data[user_id]['current_receipt'] += 1  
+            if user_data[user_id]['current_receipt'] < user_data[user_id]['sales_info'][0]['receipt_count']:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=f"{current_receipt_index + 1}枚目の伝票の人数を入力してください。")
+                )
+                user_data[user_id]['step'] = 4
+                print(f"ステップを4に進めました。")
+            else:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="全ての伝票についての報告が終了しました。")
+                )
+                user_data[user_id]['step'] = 0
 
-        if user_data[user_id]['current_receipt'] < user_data[user_id]['sales_info'][0]['receipt_count']:
+        # 伝票の人数を処理
+        elif current_step == 4:
+            cleaned_message = clean_input(user_message)
+
+            try:
+                customer_count = int(cleaned_message)
+                current_receipt_index = user_data[user_id]['current_receipt'] - 1 
+                user_data[user_id]['sales_info'][0]['transactions'][current_receipt_index]['customer_count'] = customer_count
+
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=f"伝票{current_receipt_index + 1}の売上を入力してください。")
+                )
+                user_data[user_id]['step'] = 5
+                print(f"ステップを5に進めました。")
+
+            except ValueError:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="伝票の人数は数字で入力してください。")
+                )
+
+        # 売上を処理
+        elif current_step == 5:
+            sales = user_message
+            current_receipt_index = user_data[user_id]['current_receipt'] - 1
+            user_data[user_id]['sales_info'][0]['transactions'][current_receipt_index]['sales'] = sales
+
+            if user_data[user_id]['current_receipt'] < user_data[user_id]['sales_info'][0]['receipt_count']:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=f"伝票{current_receipt_index + 1}の支払い者の名前を入力してください。")
+                )
+                user_data[user_id]['step'] = 3
+                print(f"ステップを3に進めました。")
+            else:
+                try:
+                    for transaction in user_data[user_id]['sales_info'][0]['transactions']:
+                        add_sales_data_to_google_sheets(
+                            user_data[user_id]['sales_info'][0]['date'],
+                            transaction['payer'],
+                            transaction['customer_count'],
+                            transaction['sales']
+                        )
+                    total_sales = sum(int(transaction['sales']) for transaction in user_data[user_id]['sales_info'][0]['transactions'])
+                    line_bot_api.reply_message(
+                        event.reply_token,
+                        TextSendMessage(text=f"本日の売上は {total_sales} 円でした。\n報告を終了するには「終了」、新しい伝票を追加するには「新規」と入力してください。")
+                    )
+                    user_data[user_id]['step'] = 0
+                except Exception as e:
+                    print(f"データ登録中のエラー: {e}")
+                    line_bot_api.reply_message(
+                        event.reply_token,
+                        TextSendMessage(text="データの登録中にエラーが発生しました。再試行してください。")
+                    )
+
+        elif user_message == "終了":
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text=f"{current_receipt_index + 1}枚目の伝票の人数を入力してください。")
+                TextSendMessage(text="報告を終了しました。")
             )
-            user_data[user_id]['step'] = 4
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを4に進めました。"))
-        else:
+            del user_data[user_id]
+
+        elif user_message == "新規":
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="全ての伝票についての報告が終了しました。")
+                TextSendMessage(text="新しい伝票の報告を開始します...")
             )
             user_data[user_id]['step'] = 0
 
-    # 伝票の人数を処理
-    elif current_step == 4:
-        cleaned_message = clean_input(user_message)
-
-        try:
-            customer_count = int(cleaned_message)
-            current_receipt_index = user_data[user_id]['current_receipt'] - 1 
-            user_data[user_id]['sales_info'][0]['transactions'][current_receipt_index]['customer_count'] = customer_count
-
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text=f"伝票{current_receipt_index + 1}の売上を入力してください。")
-            )
-            user_data[user_id]['step'] = 5
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを5に進めました。"))
-        except ValueError:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="伝票の人数は数字で入力してください。")
-            )
-
-    # 売上を処理
-    elif current_step == 5:
-        sales = user_message
-        current_receipt_index = user_data[user_id]['current_receipt'] - 1
-        user_data[user_id]['sales_info'][0]['transactions'][current_receipt_index]['sales'] = sales
-
-        if user_data[user_id]['current_receipt'] < user_data[user_id]['sales_info'][0]['receipt_count']:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text=f"伝票{current_receipt_index + 1}の支払い者の名前を入力してください。")
-            )
-            user_data[user_id]['step'] = 3
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="ステップを3に進めました。"))
         else:
-            try:
-                for transaction in user_data[user_id]['sales_info'][0]['transactions']:
-                    add_sales_data_to_google_sheets(
-                        user_data[user_id]['sales_info'][0]['date'],
-                        transaction['payer'],
-                        transaction['customer_count'],
-                        transaction['sales']
-                    )
-                total_sales = sum(int(transaction['sales']) for transaction in user_data[user_id]['sales_info'][0]['transactions'])
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text=f"本日の売上は {total_sales} 円でした。\n報告を終了するには「終了」、新しい伝票を追加するには「新規」と入力してください。")
-                )
-                user_data[user_id]['step'] = 0
-            except Exception as e:
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text="データの登録中にエラーが発生しました。再試行してください。")
-                )
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="入力が不明です。正しい指示を入力してください。")
+            )
 
-    elif user_message == "終了":
+    except LineBotApiError as e:
+        print(f"LINE Bot APIエラー: {e}")
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="報告を終了しました。")
+            TextSendMessage(text="申し訳ありませんが、内部エラーが発生しました。再度お試しください。")
         )
-        del user_data[user_id]
-
-    elif user_message == "新規":
+    except Exception as e:
+        print(f"予期しないエラー: {e}")
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="新しい伝票の報告を開始します...")
-        )
-        user_data[user_id]['step'] = 0
-
-    else:
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="入力が不明です。正しい指示を入力してください。")
+            TextSendMessage(text="予期しないエラーが発生しました。再度お試しください。")
         )
 
 @app.route('/', methods=['GET'])
