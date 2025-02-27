@@ -22,7 +22,7 @@ CREDENTIALS_PATH = '/etc/secrets/credentials'
 
 # 認証情報をファイルから読み込む
 with open(CREDENTIALS_PATH) as f:
-    credentials_info = json.load(f)  # JSON形式で読み込む
+    credentials_info = json.load(f)
 
 # Credentialsオブジェクトを生成
 credentials = Credentials.from_service_account_info(credentials_info)
@@ -130,6 +130,8 @@ def handle_message(event):
     elif current_step == 3:
         current_receipt_index = user_data[user_id].get('current_receipt', 0)
         payer = user_message
+        
+        # 伝票に支払い者の名前を追加
         user_data[user_id]['sales_info'][0]['transactions'].append({'payer': payer, 'customer_count': 0, 'sales': 0})
         user_data[user_id]['current_receipt'] += 1  # 次の伝票に移動
 
@@ -142,7 +144,7 @@ def handle_message(event):
         else:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="本日の伝票の報告を終了しました。")
+                TextSendMessage(text="全ての伝票についての報告が終了しました。")
             )
             user_data[user_id]['step'] = 0
 
@@ -177,6 +179,7 @@ def handle_message(event):
             )
             user_data[user_id]['step'] = 3
         else:
+            # すべての伝票情報をGoogle Sheetsに追加
             for transaction in user_data[user_id]['sales_info'][0]['transactions']:
                 add_sales_data_to_google_sheets(
                     user_data[user_id]['sales_info'][0]['date'],
