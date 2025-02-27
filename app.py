@@ -86,7 +86,6 @@ def handle_message(event):
     print(f"User ID: {user_id}, Current Step: {current_step}, User Message: {user_message}")
 
     try:
-        # 初期状態：売り上げ報告を待機
         if current_step == 0:
             if user_message == "売り上げ報告":
                 line_bot_api.reply_message(
@@ -102,7 +101,6 @@ def handle_message(event):
                     TextSendMessage(text="「売り上げ報告」と入力してください。")
                 )
         
-        # 営業日を処理
         elif current_step == 1:
             user_data[user_id]['sales_info'].append({'date': user_message})
             line_bot_api.reply_message(
@@ -112,7 +110,6 @@ def handle_message(event):
             user_data[user_id]['step'] = 2
             print(f"ステップを2に進めました。")
         
-        # 伝票の枚数を処理
         elif current_step == 2:
             cleaned_message = clean_input(user_message)
 
@@ -134,12 +131,10 @@ def handle_message(event):
                     TextSendMessage(text="伝票の枚数は数字で入力してください。")
                 )
     
-        # 支払い者の名前を処理
         elif current_step == 3:
             current_receipt_index = user_data[user_id]['current_receipt']
             payer = user_message
 
-            # 伝票に支払い者の名前を追加
             user_data[user_id]['sales_info'][0]['transactions'].append({'payer': payer, 'customer_count': 0, 'sales': 0})
             user_data[user_id]['current_receipt'] += 1  
 
@@ -157,7 +152,6 @@ def handle_message(event):
                 )
                 user_data[user_id]['step'] = 0
 
-        # 伝票の人数を処理
         elif current_step == 4:
             cleaned_message = clean_input(user_message)
 
@@ -179,7 +173,6 @@ def handle_message(event):
                     TextSendMessage(text="伝票の人数は数字で入力してください。")
                 )
 
-        # 売上を処理
         elif current_step == 5:
             sales = user_message
             current_receipt_index = user_data[user_id]['current_receipt'] - 1
@@ -236,16 +229,18 @@ def handle_message(event):
 
     except LineBotApiError as e:
         print(f"LINE Bot APIエラー: {e}")
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="申し訳ありませんが、内部エラーが発生しました。再度お試しください。")
-        )
+        if event.reply_token:  # トークンが有効な場合のみ返信
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="申し訳ありませんが、内部エラーが発生しました。再度お試しください。")
+            )
     except Exception as e:
         print(f"予期しないエラー: {e}")
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="予期しないエラーが発生しました。再度お試しください。")
-        )
+        if event.reply_token:  # トークンが有効な場合のみ返信
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="予期しないエラーが発生しました。再度お試しください。")
+            )
 
 @app.route('/', methods=['GET'])
 def home():
